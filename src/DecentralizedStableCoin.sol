@@ -3,11 +3,12 @@ pragma solidity 0.8.29;
 
 import {ERC20Burnable, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {DSCEngine} from "./DSCEngine.sol";
 
 /*
  * @titel DecentralizedStableCoin
  * @author Rajib Kumar Pradhan
- * collatoral: Exogenous (ETH & BTC)
+ * collateral: Exogenous (ETH & BTC)
  * Minting: Algorithmic
  * Realative Stability: Pegged to USD
  *
