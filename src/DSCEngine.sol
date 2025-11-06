@@ -181,7 +181,6 @@ contract DSCEngine is ReentrancyGuard {
 
     function burnDsc(uint256 amountDscToBurn) public moreThanZero(amountDscToBurn) {
         _burnDsc(amountDscToBurn, msg.sender, msg.sender);
-        i_dsc.burn(amountDscToBurn);
     }
 
     /*
@@ -266,9 +265,20 @@ contract DSCEngine is ReentrancyGuard {
      */
     function _healthFactor(address user) private view returns (uint256) {
         (uint256 totalDscMinted, uint256 totalCollateralValueInUsd) = _getAccountInformation(user);
+        return _calculateHealthFactor(totalDscMinted, totalCollateralValueInUsd);
+    }
+
+    function _calculateHealthFactor(uint256 totalDscMinted, uint256 totalCollateralValueInUsd)
+        private
+        pure
+        returns (uint256)
+    {
+        if (totalDscMinted == 0) {
+            return type(uint256).max;
+        }
         uint256 collateralAdjustedForThreshold =
             (totalCollateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
-        return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
+        return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted; // if no dsc minted, will return infinty, solidity will break on div by 0
     }
 
     function _revertIfHealthFactorIsBroken(address user) internal view {
@@ -281,6 +291,14 @@ contract DSCEngine is ReentrancyGuard {
     /////////////////////////////////////////
     // Public & Intaernal Veiw Functions   //
     /////////////////////////////////////////
+    function calculateHealthFactor(uint256 totalDscMinted, uint256 collateralValueInUsd)
+        external
+        pure
+        returns (uint256)
+    {
+        return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
+    }
+
     function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
         (, int256 price,,,) = priceFeed.latestRoundData();
