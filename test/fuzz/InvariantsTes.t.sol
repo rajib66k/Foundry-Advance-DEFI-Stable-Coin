@@ -37,9 +37,10 @@ contract OpenInvariantsTest is StdInvariant, Test {
         uint256 wethValue = engine.getUsdValue(weth, totalWethDeposited);
         uint256 wbtcValue = engine.getUsdValue(wbtc, totalWbtcDeposited);
 
-        console.log("Total Supply DSC: ", totalSupply);
         console.log("Total WETH Value in USD: ", wethValue);
         console.log("Total WBTC Value in USD: ", wbtcValue);
+        console.log("Total Supply DSC: ", totalSupply);
+        console.log("Times mintDsc called: ", handler.timesMintIsCalled());
 
         assert(wethValue + wbtcValue >= totalSupply);
     }

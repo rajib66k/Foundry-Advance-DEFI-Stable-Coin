@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.29;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, console} from "forge-std/Test.sol";
 import {DSCEngine} from "../../src/DSCEngine.sol";
 import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
@@ -12,6 +12,9 @@ contract Handler is Test {
 
     ERC20Mock private weth;
     ERC20Mock private wbtc;
+
+    uint256 public timesMintIsCalled;
+    address[] public usersWithCollateralDeposited;
 
     uint96 public constant MAX_DEPOSIT_SIZE = type(uint96).max;
 
@@ -25,7 +28,7 @@ contract Handler is Test {
     }
 
     function depositCollateral(uint256 collateralSeed, uint256 amountCollateral) public {
-        amountCollateral = bound(amountCollateral, 0, MAX_DEPOSIT_SIZE);
+        amountCollateral = bound(amountCollateral, 1, MAX_DEPOSIT_SIZE);
         ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
 
         vm.startPrank(msg.sender);
@@ -33,6 +36,37 @@ contract Handler is Test {
         collateral.approve(address(engine), amountCollateral);
         engine.depositCollateral(address(collateral), amountCollateral);
         vm.stopPrank();
+        usersWithCollateralDeposited.push(msg.sender);
+    }
+
+    function mintDsc(uint256 addressSeed, uint256 amountDscToMint) public {
+        if (usersWithCollateralDeposited.length == 0) {
+            return;
+        }
+        address sender = usersWithCollateralDeposited[addressSeed % usersWithCollateralDeposited.length];
+        (uint256 totalDscMinted, uint256 totalCollateralValueInUsd) = engine.getAccountInformation(sender);
+        int256 maxDscToMint = (int256(totalCollateralValueInUsd) / 2) - int256(totalDscMinted);
+        timesMintIsCalled++;
+        if (maxDscToMint < 0) {
+            return;
+        }
+        amountDscToMint = bound(amountDscToMint, 0, uint256(maxDscToMint));
+        if (amountDscToMint == 0) {
+            return;
+        }
+        vm.startPrank(sender);
+        engine.mintDsc(amountDscToMint);
+        vm.stopPrank();
+    }
+
+    function redeemCollateral(uint256 collateralSeed, uint256 amountCollateral) public {
+        ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
+        uint256 maxCollateralToRedeem = engine.getCollateralBalanceOfUser(address(collateral), msg.sender);
+        amountCollateral = bound(amountCollateral, 0, maxCollateralToRedeem);
+        if (amountCollateral == 0) {
+            return;
+        }
+        engine.redeemCollateral(address(collateral), amountCollateral);
     }
 
     function _getCollateralFromSeed(uint256 collateralSeed) private view returns (ERC20Mock) {
