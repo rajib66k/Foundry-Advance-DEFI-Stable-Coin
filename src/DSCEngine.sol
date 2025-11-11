@@ -5,6 +5,7 @@ import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {OracleLib} from "./libraries/OracleLib.sol";
 
 /*
  * @titel DSCEngine
@@ -37,6 +38,11 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__mintFailed();
     error DSCEngine__HealthFactorIsGood();
     error DSCEngine__HealthFactorNotImproved();
+
+    /////////////////
+    // Types       //
+    /////////////////
+    using OracleLib for AggregatorV3Interface;
 
     ///////////////////////
     // State Variables   //
@@ -301,7 +307,7 @@ contract DSCEngine is ReentrancyGuard {
 
     function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
-        (, int256 price,,,) = priceFeed.latestRoundData();
+        (, int256 price,,,) = priceFeed.staleCheckLatestRoundData();
 
         return (usdAmountInWei * PRECISION) / (uint256(price) * ADDITIONAL_FEED_PRECISION);
     }
@@ -317,7 +323,7 @@ contract DSCEngine is ReentrancyGuard {
 
     function getUsdValue(address token, uint256 amount) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
-        (, int256 price,,,) = priceFeed.latestRoundData();
+        (, int256 price,,,) = priceFeed.staleCheckLatestRoundData();
 
         return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
     }
@@ -336,5 +342,17 @@ contract DSCEngine is ReentrancyGuard {
 
     function getCollateralBalanceOfUser(address user, address token) external view returns (uint256) {
         return s_collateralDeposited[user][token];
+    }
+
+    function getPrecision() external pure returns (uint256) {
+        return PRECISION;
+    }
+
+    function getLiquidationThreshold() external pure returns (uint256) {
+        return LIQUIDATION_THRESHOLD;
+    }
+
+    function getCollateralTokenPriceFeed(address token) external view returns (address) {
+        return s_priceFeeds[token];
     }
 }

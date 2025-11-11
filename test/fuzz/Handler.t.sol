@@ -5,6 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {DSCEngine} from "../../src/DSCEngine.sol";
 import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {MockV3Aggregator} from "../Mocks/MockV3Aggregator.sol";
 
 contract Handler is Test {
     DSCEngine private engine;
@@ -12,6 +13,7 @@ contract Handler is Test {
 
     ERC20Mock private weth;
     ERC20Mock private wbtc;
+    MockV3Aggregator private wethUsdPriceFeed;
 
     uint256 public timesMintIsCalled;
     address[] public usersWithCollateralDeposited;
@@ -25,6 +27,8 @@ contract Handler is Test {
         address[] memory collateralTokens = engine.getCollateralTokens();
         weth = ERC20Mock(collateralTokens[0]);
         wbtc = ERC20Mock(collateralTokens[1]);
+
+        wethUsdPriceFeed = MockV3Aggregator(engine.getCollateralTokenPriceFeed(address(weth)));
     }
 
     function depositCollateral(uint256 collateralSeed, uint256 amountCollateral) public {
@@ -68,6 +72,11 @@ contract Handler is Test {
         }
         engine.redeemCollateral(address(collateral), amountCollateral);
     }
+
+    // function updateCollateralPrice(int256 newPrice) public {
+    //     int256 newPriceInt = int256(uint256(newPrice));
+    //     wethUsdPriceFeed.updateAnswer(newPriceInt);
+    // }
 
     function _getCollateralFromSeed(uint256 collateralSeed) private view returns (ERC20Mock) {
         if (collateralSeed % 2 == 0) {
